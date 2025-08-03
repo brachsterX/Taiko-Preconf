@@ -2,27 +2,14 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useAccount, useWalletClient } from 'wagmi'
 import { parseEther } from 'viem'
 import { createPublicClient, webSocket } from 'viem'
+import Confetti from 'react-confetti'
+import { useWindowSize } from 'react-use'
 import { TxProgressBar } from './TxProgressBar'
+import { taikoChain, publicClient } from './chains'
 
 const WSS_URL = import.meta.env.VITE_WSS_URL
 
-const taikoChain = {
-  id: 167009,
-  name: 'Taiko Hekla',
-  nativeCurrency: {
-    name: 'ETH',
-    symbol: 'ETH',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://rpc.hekla.taiko.xyz'],
-      webSocket: [WSS_URL],
-    },
-  },
-}
-
-export function UserTxTracker() {
+export function UserTxTracker({ setUserTxHash }) {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
 
@@ -30,17 +17,15 @@ export function UserTxTracker() {
   const [status, setStatus] = useState('')
   const [startTime, setStartTime] = useState(null)
   const [elapsed, setElapsed] = useState(0)
-  const timerRef = useRef(null)
 
-  const progress = Math.min(status.startsWith('🟢 Included') ? 100 : elapsed * 10, 100)
+  const timerRef = useRef(null)
+  const { width, height } = useWindowSize()
 
   const sendTx = async () => {
     if (!walletClient || !address) return
-
     setStatus('⏳ Sending...')
-    setStartTime(null)
-    setElapsed(0)
-    setTxHash(null)
+    
+    
 
     try {
       const tx = await walletClient.sendTransaction({
@@ -50,14 +35,15 @@ export function UserTxTracker() {
       })
 
       setTxHash(tx)
-      setStatus('✅ Sent — waiting for preconfirmation...')
       setStartTime(Date.now())
+      setElapsed(0)
+      setUserTxHash(tx)
+      setStatus('✅ Sent — waiting for preconfirmation...')
 
       setTimeout(() => {
         setStatus('🟡 Preconfirmed — waiting for inclusion...')
       }, 2000)
 
-      // console.log('TX sent:', tx)
     } catch (err) {
       console.error('Tx failed:', err)
       setStatus('❌ Failed to send')
@@ -69,9 +55,9 @@ export function UserTxTracker() {
 
     timerRef.current = setInterval(() => {
       const now = Date.now()
-      const seconds = ((now - startTime) / 1000).toFixed(2) // includes ms
+      const seconds = ((now - startTime) / 1000).toFixed(2)
       setElapsed(seconds)
-   }, 100)
+    }, 100)
 
     return () => clearInterval(timerRef.current)
   }, [startTime])
@@ -86,21 +72,22 @@ export function UserTxTracker() {
 
     const unwatch = client.watchBlocks({
       onBlock: async (blockHeader) => {
-        // console.log('🧱 Header block:', Number(blockHeader.number))
-
         try {
-          const fullBlock = await client.getBlock({ blockNumber: blockHeader.number })
+          const fullBlock = await publicClient.getBlock({
+            blockNumber: blockHeader.number,
+          })
+
           const txs = fullBlock.transactions.map((t) =>
             typeof t === 'string' ? t : t.hash
           )
 
-          if (txs.map(h => h.toLowerCase()).includes(txHash.toLowerCase())) {
+          if (txs.map((h) => h.toLowerCase()).includes(txHash.toLowerCase())) {
             setStatus(`🟢 Included in block ${fullBlock.number}`)
             clearInterval(timerRef.current)
             unwatch()
           }
         } catch (err) {
-          console.error('Failed to fetch full block:', err)
+          console.warn('Block not ready yet')
         }
       },
     })
@@ -110,21 +97,39 @@ export function UserTxTracker() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Send Test Transaction</h2>
+      <h2 className="text-xl font-bold">Send Test Transaction</h2>
+
       {!isConnected ? (
-        <p>Connect wallet first</p>
+        <p className="text-sm text-gray-400">Connect your wallet first</p>
       ) : (
-        <button onClick={sendTx} disabled={status === '⏳ Sending...'}>
+        <button
+          onClick={sendTx}
+          className="bg-[#E81899] hover:brightness-110 py-2 px-4 rounded-xl shadow-lg"
+        >
           Send 0.00001 ETH to Self
         </button>
       )}
+
       {txHash && (
-        <>
-          <p>
-            Tx: <code>{txHash.slice(0, 12)}...</code> – {status}
-          </p>
-          <TxProgressBar status={status} elapsed={elapsed} />
-        </>
+        <p className="text-sm">
+          Tx:{' '}
+          <code className="bg-gray-800 px-2 py-1 rounded">
+            {txHash.slice(0, 12)}...
+          </code>{' '}
+          – {status}
+        </p>
+      )}
+
+      <TxProgressBar status={status} elapsed={elapsed} />
+
+      {status.startsWith('🟢') && (
+        <Confetti
+          width={width}
+          height={height}
+          numberOfPieces={200}
+          recycle={false}
+          style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0 }}
+        />
       )}
     </div>
   )

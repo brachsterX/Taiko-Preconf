@@ -4,7 +4,7 @@ import { UserTxTracker } from './UserTxTracker'
 import { TransactionFeed } from './TransactionFeed'
 
 function App() {
-  const [txHash, setTxHash] = useState(null)
+  const [userTxHash, setUserTxHash] = useState(null)
   return (
     <div className="min-h-screen bg-taiko-bg text-white flex items-center justify-center px-4 font-primary">
       <div className="max-w-xl w-full text-center space-y-10">
@@ -20,8 +20,8 @@ function App() {
 
         <div className="bg-taiko-card rounded-2xl p-6 shadow-lg space-y-6">
           <WalletConnector />
-          <UserTxTracker txHash={txHash} setTxHash={setTxHash} />
-          <TransactionFeed userTxHash={txHash} />
+          <UserTxTracker setUserTxHash={setUserTxHash} />
+          <TransactionFeed userTxHash={userTxHash} />
         </div>
 
         <footer className="text-xs text-gray-500">
