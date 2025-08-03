@@ -3,7 +3,7 @@ import { useAccount, useWalletClient, usePublicClient } from 'wagmi'
 import { parseEther } from 'viem'
 import { createPublicClient, webSocket } from 'viem'
 import Confetti from 'react-confetti'
-import { useWindowSize } from '@uidotdev/usehooks'
+import { useWindowSize } from 'react-use'
 
 
 
@@ -129,8 +129,14 @@ export function UserTxTracker({ txHash, setTxHash }) {
         </p>
       )}
 
-      {status.startsWith('🟢 Included') && (
-        <Confetti width={width} height={height} numberOfPieces={200} recycle={false} />
+      {status.startsWith('🟢 Included') && width > 0 && height > 0 && (
+        <Confetti
+          width={width}
+          height={height}
+          numberOfPieces={200}
+          recycle={false}
+          style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0 }}
+        />
       )}
     </div>
   )
