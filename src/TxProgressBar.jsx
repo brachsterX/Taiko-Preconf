@@ -1,4 +1,5 @@
 import React from 'react'
+import { useMemo } from 'react'
 
 function getColor(status) {
   if (!status) return 'bg-gray-500'
@@ -10,7 +11,10 @@ function getColor(status) {
 }
 
 export function TxProgressBar({ status, elapsed }) {
-  const progress = Math.min(status?.startsWith('🟢 Included') ? 100 : elapsed * 10, 100)
+  const progress = useMemo(() => {
+    if (status.startsWith('🟢')) return 100
+    return Math.min(elapsed * 10, 100)
+  }, [status, elapsed])
   const barColor = getColor(status)
 
   return (

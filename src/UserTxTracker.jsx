@@ -41,8 +41,13 @@ export function UserTxTracker({ setUserTxHash }) {
       setStatus('✅ Sent — waiting for preconfirmation...')
 
       setTimeout(() => {
-        setStatus('🟡 Preconfirmed — waiting for inclusion...')
-      }, 2000)
+      setStatus((prev) => {
+        if (!prev.startsWith('🟢')) {
+          return '🟡 Preconfirmed — waiting for inclusion...'
+        }
+        return prev
+      })
+    }, 2000)
 
     } catch (err) {
       console.error('Tx failed:', err)
@@ -56,7 +61,7 @@ export function UserTxTracker({ setUserTxHash }) {
     timerRef.current = setInterval(() => {
       const now = Date.now()
       const seconds = ((now - startTime) / 1000).toFixed(2)
-      setElapsed(seconds)
+      setElapsed(Number(seconds))
     }, 100)
 
     return () => clearInterval(timerRef.current)
@@ -78,16 +83,20 @@ export function UserTxTracker({ setUserTxHash }) {
           })
 
           const txs = fullBlock.transactions.map((t) =>
-            typeof t === 'string' ? t : t.hash
+            typeof t === 'string' ? t.toLowerCase() : t.hash.toLowerCase()
           )
 
-          if (txs.map((h) => h.toLowerCase()).includes(txHash.toLowerCase())) {
+          // console.log('🔍 Checking block:', fullBlock.number)
+          // console.log('📦 Transactions:', txs)
+          // console.log('🧾 Target txHash:', txHash.toLowerCase())
+
+          if (txs.includes(txHash.toLowerCase())) {
             setStatus(`🟢 Included in block ${fullBlock.number}`)
             clearInterval(timerRef.current)
             unwatch()
           }
         } catch (err) {
-          console.warn('Block not ready yet')
+          console.warn('⚠️ Block not ready yet or fetch failed')
         }
       },
     })
