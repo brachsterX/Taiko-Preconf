@@ -43,7 +43,7 @@ export function TransactionFeed({ userTxHash }) {
               const isUserTx =
                 userTxHash &&
                 tx.txHash.toLowerCase() === userTxHash.toLowerCase()
-                console.log('TX', tx.txHash, 'User TX?', isUserTx)
+                // console.log('TX', tx.txHash, 'User TX?', isUserTx)
 
               return (
                 <motion.div
