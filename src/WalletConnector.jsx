@@ -1,6 +1,7 @@
 import { useConnect, useAccount, useDisconnect } from 'wagmi'
 import { InjectedConnector } from 'wagmi/connectors/injected'
 import { useSigned } from './SignedContext'
+import { switchToHeklaChain } from './switchToHeklaChain'
 
 
 export function WalletConnector() {
@@ -14,7 +15,6 @@ export function WalletConnector() {
           params: [msg, account],
         })
         setSigned(true)
-        // console.log('✅ Signature successful')
       } catch (err) {
         console.warn('❌ Signature rejected')
         disconnect()
@@ -28,11 +28,13 @@ export function WalletConnector() {
   const { isConnected, address } = useAccount()
   const { disconnect } = useDisconnect()
   const { signed, setSigned } = useSigned()
-  
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3 text-center">
       {!isConnected ? (
-        <button onClick={() => connect()}>Connect Wallet</button>
+        <>
+          <button onClick={() => connect()}>Connect Wallet</button>
+        </>
       ) : (
         <>
           <button onClick={() => disconnect()}>Disconnect</button>

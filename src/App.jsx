@@ -2,11 +2,22 @@ import React, { useState } from 'react'
 import { WalletConnector } from './WalletConnector'
 import { UserTxTracker } from './UserTxTracker'
 import { TransactionFeed } from './TransactionFeed'
+import { switchToHeklaChain } from './switchToHeklaChain'
 
 function App() {
   const [userTxHash, setUserTxHash] = useState(null)
   return (
     <div className="min-h-screen bg-taiko-bg text-white flex items-center justify-center px-4 font-primary">
+      
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={switchToHeklaChain}
+          className="bg-[#5D07C8] hover:brightness-110 text-white py-2 px-4 rounded-xl shadow"
+        >
+          Switch to Hekla
+        </button>
+      </div>
+      
       <div className="max-w-xl w-full text-center space-y-10">
         <header>
           <img src="/taiko_logo.png" alt="Taiko logo" className="mx-auto mb-4 w-20" />
