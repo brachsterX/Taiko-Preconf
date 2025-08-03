@@ -43,6 +43,20 @@ export function UserTxTracker({ txHash, setTxHash }) {
       const tx = await walletClient.sendTransaction({
         to: address,
         value: parseEther('0.00001'),
+        chain: {
+          id: 167009,
+          name: 'Taiko Hekla',
+          nativeCurrency: {
+            name: 'ETH',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: {
+            default: {
+              http: ['https://rpc.hekla.taiko.xyz'],
+            },
+          },
+        },
       })
 
       const txHash = tx

@@ -1,83 +1,52 @@
-import {
-  WagmiConfig,
-  createConfig,
-  useAccount,
-  useConnect,
-  useDisconnect,
-  configureChains,
-} from 'wagmi'
-
-import { jsonRpcProvider } from '@wagmi/core/providers/jsonRpc'
+// WalletConnector.jsx
+import { useConnect, useDisconnect, useAccount } from 'wagmi'
 import { InjectedConnector } from 'wagmi/connectors/injected'
 
-// ✅ Define Hekla Testnet
-const hekla = {
-  id: 167009,
-  name: 'Hekla Testnet',
-  network: 'hekla',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'ETH',
-    symbol: 'ETH',
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://rpc.hekla.taiko.xyz'],
-    },
-  },
-  blockExplorers: {
-    default: { name: 'Taiko Explorer', url: 'https://hekla.taikoscan.io' },
-  },
-  testnet: true,
-}
-
-// ✅ Set up chains and provider
-const { chains, publicClient } = configureChains(
-  [hekla],
-  [
-    jsonRpcProvider({
-      rpc: () => ({ http: 'https://rpc.hekla.taiko.xyz' }),
-    }),
-  ]
-)
-
-const config = createConfig({
-  autoConnect: true,
-  connectors: [new InjectedConnector({ chains })],
-  publicClient,
-})
-
-export function WalletProvider({ children }) {
-  return <WagmiConfig config={config}>{children}</WagmiConfig>
-}
-
 export function WalletConnector() {
-  const { address, isConnected } = useAccount()
-  const { connect, connectors, isLoading, pendingConnector } = useConnect()
-  const { disconnect } = useDisconnect()
+  const { connect } = useConnect({
+    connector: new InjectedConnector(),
+    onSuccess: async ({ account }) => {
+      const message = 'Please sign this message to verify your wallet.'
+      try {
+        const signature = await window.ethereum.request({
+          method: 'personal_sign',
+          params: [message, account],
+        })
+        console.log('Signature:', signature)
+      } catch (err) {
+        console.error('Signature rejected or failed:', err)
+      }
+    },
+  })
 
-  if (isConnected)
-    return (
-      <div>
-        <p>Connected: {address}</p>
-        <button onClick={disconnect}>Disconnect</button>
-      </div>
-    )
+  const { disconnect } = useDisconnect()
+  const { isConnected, address } = useAccount()
+
+  const shortenAddress = (addr) =>
+    addr.slice(0, 6) + '...' + addr.slice(addr.length - 4)
 
   return (
-    <div>
-      {connectors.map((connector) => (
+    <div className="flex flex-col items-center gap-3">
+      {!isConnected ? (
         <button
-          key={connector.id}
-          onClick={() => connect({ connector })}
-          disabled={!connector.ready}
+          onClick={() => connect()}
+          className="bg-[#E81899] text-white font-semibold px-5 py-2 rounded-xl shadow hover:brightness-110 transition"
         >
-          {connector.name}
-          {isLoading &&
-            pendingConnector?.id === connector.id &&
-            ' (connecting)'}
+          Connect Wallet
         </button>
-      ))}
+      ) : (
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-sm text-[#6ECFB0]">
+            Connected: <span className="font-mono">{shortenAddress(address)}</span>
+          </p>
+          <button
+            onClick={() => disconnect()}
+            className="bg-gray-700 text-white text-sm px-4 py-1 rounded-md hover:bg-gray-600 transition"
+          >
+            Disconnect
+          </button>
+        </div>
+      )}
     </div>
   )
 }
