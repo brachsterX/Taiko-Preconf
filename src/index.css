@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Clash+Grotesk:wght@400;600;700&family=Public+Sans:wght@400;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-taiko-bg text-white font-primary;
+}
+
+@layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Clash+Grotesk:wght@400;600;700&family=Public+Sans:wght@400;600&display=swap');
+
+  body {
+    @apply bg-[#0C101B] text-white font-primary;
+  }
+
+  h1, h2 {
+    @apply font-bold;
+  }
+
+  button {
+    @apply bg-[#E81899] text-white font-semibold py-2 px-5 rounded-xl shadow-lg hover:brightness-110;
+  }
+
+  code {
+    @apply bg-gray-800 text-[#FFE2A0] font-mono px-2 py-1 rounded;
+  }
+
+  .font-primary {
+    font-family: 'Clash Grotesk', 'Public Sans', sans-serif;
+  }
+}
