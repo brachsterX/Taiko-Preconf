@@ -1,11 +1,8 @@
-import React, { useEffect, useState } from 'react'
-import { useAccount, useWalletClient, usePublicClient } from 'wagmi'
+import React, { useState, useEffect, useRef } from 'react'
+import { useAccount, useWalletClient } from 'wagmi'
 import { parseEther } from 'viem'
 import { createPublicClient, webSocket } from 'viem'
-import Confetti from 'react-confetti'
-import { useWindowSize } from 'react-use'
-
-
+import { TxProgressBar } from './TxProgressBar'
 
 const WSS_URL = import.meta.env.VITE_WSS_URL
 
@@ -25,64 +22,42 @@ const taikoChain = {
   },
 }
 
-export function UserTxTracker({ txHash, setTxHash }) {
+export function UserTxTracker() {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
-  const publicClient = usePublicClient()
-  const { width, height } = useWindowSize()
 
-  // const [txHash, setTxHash] = useState(null)
+  const [txHash, setTxHash] = useState(null)
   const [status, setStatus] = useState('')
+  const [startTime, setStartTime] = useState(null)
+  const [elapsed, setElapsed] = useState(0)
+  const timerRef = useRef(null)
+
+  const progress = Math.min(status.startsWith('🟢 Included') ? 100 : elapsed * 10, 100)
 
   const sendTx = async () => {
     if (!walletClient || !address) return
 
     setStatus('⏳ Sending...')
+    setStartTime(null)
+    setElapsed(0)
+    setTxHash(null)
 
     try {
       const tx = await walletClient.sendTransaction({
         to: address,
         value: parseEther('0.00001'),
-        chain: {
-          id: 167009,
-          name: 'Taiko Hekla',
-          nativeCurrency: {
-            name: 'ETH',
-            symbol: 'ETH',
-            decimals: 18,
-          },
-          rpcUrls: {
-            default: {
-              http: ['https://rpc.hekla.taiko.xyz'],
-            },
-          },
-        },
+        chain: taikoChain,
       })
 
-      const txHash = tx
-      setTxHash(txHash)
-
-      // Check last 5 blocks in case tx is already included
-      const latestBlock = await publicClient.getBlockNumber()
-      for (let i = 0n; i < 5n; i++) {
-        const block = await publicClient.getBlock({ blockNumber: latestBlock - i })
-        const txs = block.transactions.map((t) =>
-          typeof t === 'string' ? t : t.hash
-        )
-
-        if (txs.map(h => h.toLowerCase()).includes(txHash.toLowerCase())) {
-          setStatus(`🟢 Included in block ${block.number}`)
-          return
-        }
-      }
-
-      // Simulate preconfirmation after 2s
+      setTxHash(tx)
       setStatus('✅ Sent — waiting for preconfirmation...')
+      setStartTime(Date.now())
+
       setTimeout(() => {
         setStatus('🟡 Preconfirmed — waiting for inclusion...')
       }, 2000)
 
-      // console.log('TX sent:', txHash)
+      // console.log('TX sent:', tx)
     } catch (err) {
       console.error('Tx failed:', err)
       setStatus('❌ Failed to send')
@@ -90,46 +65,52 @@ export function UserTxTracker({ txHash, setTxHash }) {
   }
 
   useEffect(() => {
-  if (!txHash || status.startsWith('🟢')) return
+    if (!startTime) return
 
-  const client = createPublicClient({
-    transport: webSocket(WSS_URL),
-    chain: taikoChain,
-  })
+    timerRef.current = setInterval(() => {
+      const now = Date.now()
+      const seconds = ((now - startTime) / 1000).toFixed(2) // includes ms
+      setElapsed(seconds)
+   }, 100)
 
-  const unwatch = client.watchBlocks({
-    onBlock: async (blockHeader) => {
-      // console.log('🧱 Header block:', Number(blockHeader.number))
-      // console.log('Expected txHash:', txHash.toLowerCase())
+    return () => clearInterval(timerRef.current)
+  }, [startTime])
 
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 3000))
-        const fullBlock = await publicClient.getBlock({ blockNumber: blockHeader.number })
-        const txs = fullBlock.transactions.map((t) =>
-          typeof t === 'string' ? t : t.hash
-        )
+  useEffect(() => {
+    if (!txHash || status.startsWith('🟢')) return
 
-        // console.log('Txs in block:', txs.map((h) => h.toLowerCase()))
+    const client = createPublicClient({
+      transport: webSocket(WSS_URL),
+      chain: taikoChain,
+    })
 
-        if (txs.map(h => h.toLowerCase()).includes(txHash.toLowerCase())) {
-          // console.log('✅ MATCH FOUND — updating status')
-          setStatus(`🟢 Included in block ${fullBlock.number}`)
-          unwatch()
-        } else {
-          // console.log('❌ No match in this block')
+    const unwatch = client.watchBlocks({
+      onBlock: async (blockHeader) => {
+        // console.log('🧱 Header block:', Number(blockHeader.number))
+
+        try {
+          const fullBlock = await client.getBlock({ blockNumber: blockHeader.number })
+          const txs = fullBlock.transactions.map((t) =>
+            typeof t === 'string' ? t : t.hash
+          )
+
+          if (txs.map(h => h.toLowerCase()).includes(txHash.toLowerCase())) {
+            setStatus(`🟢 Included in block ${fullBlock.number}`)
+            clearInterval(timerRef.current)
+            unwatch()
+          }
+        } catch (err) {
+          console.error('Failed to fetch full block:', err)
         }
-      } catch (err) {
-        console.error('Failed to fetch full block:', err)
-      }
-    },
-  })
+      },
+    })
 
-  return () => unwatch()
-}, [txHash, status, publicClient, WSS_URL])
+    return () => unwatch()
+  }, [txHash, status])
 
   return (
-    <div style={{ marginTop: '2rem' }}>
-      <h2>Send Test Transaction</h2>
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Send Test Transaction</h2>
       {!isConnected ? (
         <p>Connect wallet first</p>
       ) : (
@@ -138,19 +119,12 @@ export function UserTxTracker({ txHash, setTxHash }) {
         </button>
       )}
       {txHash && (
-        <p>
-          Tx: <code>{txHash.slice(0, 12)}...</code> – {status}
-        </p>
-      )}
-
-      {status.startsWith('🟢 Included') && width > 0 && height > 0 && (
-        <Confetti
-          width={width}
-          height={height}
-          numberOfPieces={200}
-          recycle={false}
-          style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0 }}
-        />
+        <>
+          <p>
+            Tx: <code>{txHash.slice(0, 12)}...</code> – {status}
+          </p>
+          <TxProgressBar status={status} elapsed={elapsed} />
+        </>
       )}
     </div>
   )

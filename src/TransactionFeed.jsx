@@ -19,7 +19,7 @@ export function TransactionFeed({ userTxHash }) {
     }
 
     fetchTxs()
-    const interval = setInterval(fetchTxs, 5000)
+    const interval = setInterval(fetchTxs, 2000)
     return () => clearInterval(interval)
   }, [])
 

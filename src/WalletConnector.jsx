@@ -1,51 +1,47 @@
-// WalletConnector.jsx
-import { useConnect, useDisconnect, useAccount } from 'wagmi'
+import { useConnect, useAccount, useDisconnect } from 'wagmi'
 import { InjectedConnector } from 'wagmi/connectors/injected'
+import { useSigned } from './SignedContext'
+
 
 export function WalletConnector() {
   const { connect } = useConnect({
     connector: new InjectedConnector(),
     onSuccess: async ({ account }) => {
-      const message = 'Please sign this message to verify your wallet.'
       try {
-        const signature = await window.ethereum.request({
+        const msg = 'Sign to verify wallet ownership.'
+        await window.ethereum.request({
           method: 'personal_sign',
-          params: [message, account],
+          params: [msg, account],
         })
-        console.log('Signature:', signature)
+        setSigned(true)
+        // console.log('✅ Signature successful')
       } catch (err) {
-        console.error('Signature rejected or failed:', err)
+        console.warn('❌ Signature rejected')
+        disconnect()
       }
+    },
+    onError(error) {
+      console.error('Connection error:', error)
     },
   })
 
-  const { disconnect } = useDisconnect()
   const { isConnected, address } = useAccount()
-
-  const shortenAddress = (addr) =>
-    addr.slice(0, 6) + '...' + addr.slice(addr.length - 4)
-
+  const { disconnect } = useDisconnect()
+  const { signed, setSigned } = useSigned()
+  
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="space-y-2">
       {!isConnected ? (
-        <button
-          onClick={() => connect()}
-          className="bg-[#E81899] text-white font-semibold px-5 py-2 rounded-xl shadow hover:brightness-110 transition"
-        >
-          Connect Wallet
-        </button>
+        <button onClick={() => connect()}>Connect Wallet</button>
       ) : (
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-sm text-[#6ECFB0]">
-            Connected: <span className="font-mono">{shortenAddress(address)}</span>
-          </p>
-          <button
-            onClick={() => disconnect()}
-            className="bg-gray-700 text-white text-sm px-4 py-1 rounded-md hover:bg-gray-600 transition"
-          >
-            Disconnect
-          </button>
-        </div>
+        <>
+          <button onClick={() => disconnect()}>Disconnect</button>
+          {signed ? (
+            <p className="text-sm text-green-400">✅ Signed in as {address.slice(0, 6)}…{address.slice(-4)}</p>
+          ) : (
+            <p className="text-sm text-yellow-400">⚠️ Awaiting signature...</p>
+          )}
+        </>
       )}
     </div>
   )
